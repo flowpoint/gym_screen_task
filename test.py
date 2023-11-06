@@ -16,10 +16,14 @@ np.set_printoptions(linewidth=128, edgeitems=128)
 obs, info = env.reset()
 
 for i in range(16):
-    obs, reward, term, trunc, info = env.step({'mouse_rel_move':[1,1]})
+    obs, reward, term, trunc, info = env.step({'mouse_rel_move':[1,1], 'mouse_buttons':[0,0,0]})
     print(reward)
 
-obs, reward, term, trunc, info = env.step({'mouse_rel_move':[0,0]})
+# dont move
+# press mouse button 1 [left] down and release/keep released the others
+obs, reward, term, trunc, info = env.step({'mouse_rel_move':[0,0], 'mouse_buttons':[1,0,0]})
+# dont move and release mouse button 1
+obs, reward, term, trunc, info = env.step({'mouse_rel_move':[0,0], 'mouse_buttons':[0,0,0]})
 print(reward)
 assert reward == 1.
 

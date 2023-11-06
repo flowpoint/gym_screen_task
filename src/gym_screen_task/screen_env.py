@@ -105,6 +105,8 @@ class ScreenEnv(gym.Env):
         self.button_shape = np.ones([1,1]) * self.semantic_class['button']
         self.button_size = self.cursor_shape.shape
 
+        self.env_hidden_state = {}
+
     def _get_info(self):
         return {}
 
@@ -187,13 +189,21 @@ class ClickButtonEnv(ScreenEnv):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    def mouse_on_button(self, new_obs):
+        return new_obs['screen'][self.cursor_pos[0], self.cursor_pos[1]] == self.semantic_class['button']
+
     def _get_step_reward(self, action, old_obs, new_obs):
-        if new_obs['screen'][self.cursor_pos[0], self.cursor_pos[1]] == self.semantic_class['button']:
+        if self.mouse_on_button(new_obs) and action['mouse_buttons'][0] == 1:
+            self.env_hidden_state['last_press_correct'] = True
+            reward = 0.
+            terminated = False
+        elif self.mouse_on_button(new_obs) and action['mouse_buttons'][0] == 0:
             reward = 1.
             terminated = True
         else: 
             reward = 0.
             terminated = False
+            self.env_hidden_state['last_press_correct'] = False
 
         return reward, terminated
 
