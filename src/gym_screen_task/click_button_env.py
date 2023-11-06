@@ -2,7 +2,7 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 
-class ScreenEnv(gym.Env):
+class ClickButtonEnv(gym.Env):
     # start with button clicking in a gridworld
     # cursor is moved with a relative position
     metadata = {"render_modes": ["human", "array"]}
@@ -95,5 +95,4 @@ class ScreenEnv(gym.Env):
 
     def close(self):
         pass
-
 
