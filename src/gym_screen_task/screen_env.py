@@ -135,16 +135,9 @@ class ScreenEnv(gym.Env):
         pass
 
     def _get_step_reward(self, action):
-        if all(self.cursor_pos == self.button_pos):
-            reward = 1.
-            terminated = True
-        else: 
-            reward = 0.
-            terminated = False
+        raise NotImplemented('use a subclass instead of ScreenEnv directly')
 
-        return reward, terminated
-
-    def step(self, action):
+    def _cursor_move(self, action):
         movement = [
                 [0,1],
                 [1,0],
@@ -152,8 +145,13 @@ class ScreenEnv(gym.Env):
                 [-1,0],
                 [0,0],
                 ]
-
         self.cursor_pos = (np.array(self.cursor_pos) + movement[action]).clip(np.array([0,0]), self.resolution)
+
+
+
+    def step(self, action):
+        self._cursor_move(action)
+
         reward, terminated = self._get_step_reward(action) 
 
         obs = self._get_obs()
@@ -163,11 +161,22 @@ class ScreenEnv(gym.Env):
         return obs, reward, terminated, truncated, info
 
 
-
-'''
-class DragSlider(ScreenEnv):
+class ClickButtonEnv(ScreenEnv):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-'''
+
+    def _get_step_reward(self, action):
+        if all(self.cursor_pos == self.button_pos):
+            reward = 1.
+            terminated = True
+        else: 
+            reward = 0.
+            terminated = False
+
+        return reward, terminated
+
+class DragSliderEnv(ScreenEnv):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 
