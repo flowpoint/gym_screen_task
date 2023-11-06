@@ -2,13 +2,14 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 
-
 class ScreenEnv(gym.Env):
     # start with button clicking in a gridworld
     # cursor is moved with a relative position
+    metadata = {"render_modes": ["human", "array"]}
 
     def __init__(self, render_mode=None, resolution=[128,128]):
         self.resolution = resolution
+        self.render_mode = render_mode
 
         self.observation_space = spaces.Dict(
                 {
@@ -44,6 +45,7 @@ class ScreenEnv(gym.Env):
 
         obs = self._get_obs()
         info = self._get_info()
+        self.render()
         return obs, info
     
     def step(self, action):
@@ -55,8 +57,8 @@ class ScreenEnv(gym.Env):
                 [0,0],
                 ]
 
-        self.cursor_pos = (np.array(self.cursor_pos) + movement[action]).clip(np.array(0,0), self.resolution)
-        if self.cursor_pos == self.button_pos:
+        self.cursor_pos = (np.array(self.cursor_pos) + movement[action]).clip(np.array([0,0]), self.resolution)
+        if all(self.cursor_pos == self.button_pos):
             reward = 1.
             terminated = True
         else: 
@@ -65,11 +67,16 @@ class ScreenEnv(gym.Env):
 
         obs = self._get_obs()
         info = self._get_info()
-
-        return obs, reward, terminated, terminated, info
+        self.render()
+        truncated = False
+        return obs, reward, terminated, truncated, info
 
     def render(self):
-        raise NotImplemented()
+        if self.render_mode == 'human':
+            raise NotImplemented()
+        elif self.render_mode == 'array':
+            print(self._get_obs()['screen'])
+
 
     def close(self):
         pass
