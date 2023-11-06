@@ -15,6 +15,8 @@ readme = "readme.md"
 dependencies = [
 	"click",
 	"more_itertools",
+    "gymnasium",
+    "numpy"
 ]
 
 [project.optional-dependencies]
