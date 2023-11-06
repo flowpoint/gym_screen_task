@@ -4,7 +4,6 @@ import numpy as np
 
 import string
 
-
 class ScreenEnv(gym.Env):
     # start with button clicking in a gridworld
     # cursor is moved with a relative position
@@ -55,15 +54,15 @@ class ScreenEnv(gym.Env):
         self.mouse_rel_move = spaces.Box(
                 low=-max_mouse_velocity,
                 high=max_mouse_velocity,
-                shape=np.array([1,1], dtype=np.float32),
+                shape=np.array([1,1], dtype=np.int64),
                 dtype=float
                 )
 
         # mouse movement (absolute)
         self.mouse_abs_move = spaces.Box(
-                low=-max_mouse_velocity,
-                high=max_mouse_velocity,
-                shape=np.array(self.resolution, dtype=np.int64),
+                low=np.array([0,0], dtype=np.int64),
+                high=np.array(self.resolution, dtype=np.int64),
+                shape=np.array([2], dtype=np.int64),
                 dtype=int
                 )
 
@@ -72,7 +71,7 @@ class ScreenEnv(gym.Env):
         self.mouse_scroll = spaces.Box(
                 low=-max_mouse_scroll_velocity,
                 high=max_mouse_scroll_velocity,
-                shape=np.array([1], dtype=np.float32),
+                shape=(1,),
                 dtype=float
                 )
         
@@ -96,6 +95,8 @@ class ScreenEnv(gym.Env):
         self.button_shape = np.array([[2]])
         self.button_size = self.cursor_shape.shape
 
+    def _get_info(self):
+        return {}
 
     def _get_obs(self):
         screenbuf = np.zeros(self.resolution, dtype=np.int64)
@@ -109,10 +110,7 @@ class ScreenEnv(gym.Env):
         xr = slice(x, x+self.cursor_size[0])
         yr = slice(y, y+self.cursor_size[1])
         screenbuf[xr, yr] = self.cursor_shape
-        return {"screen":screenbuf}
-
-    def _get_info(self):
-        return {}
+        return {"screen":screenbuf, "task_description":""}
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -122,7 +120,30 @@ class ScreenEnv(gym.Env):
         info = self._get_info()
         self.render()
         return obs, info
-    
+
+    def render(self):
+        if self.render_mode == 'human':
+            raise NotImplemented()
+        elif self.render_mode == 'array':
+            print(self._get_obs()['screen'])
+
+    def step(self, action):
+        raise NotImplemented()
+
+
+    def close(self):
+        pass
+
+    def _get_step_reward(self, action):
+        if all(self.cursor_pos == self.button_pos):
+            reward = 1.
+            terminated = True
+        else: 
+            reward = 0.
+            terminated = False
+
+        return reward, terminated
+
     def step(self, action):
         movement = [
                 [0,1],
@@ -133,12 +154,7 @@ class ScreenEnv(gym.Env):
                 ]
 
         self.cursor_pos = (np.array(self.cursor_pos) + movement[action]).clip(np.array([0,0]), self.resolution)
-        if all(self.cursor_pos == self.button_pos):
-            reward = 1.
-            terminated = True
-        else: 
-            reward = 0.
-            terminated = False
+        reward, terminated = self._get_step_reward(action) 
 
         obs = self._get_obs()
         info = self._get_info()
@@ -146,13 +162,12 @@ class ScreenEnv(gym.Env):
         truncated = False
         return obs, reward, terminated, truncated, info
 
-    def render(self):
-        if self.render_mode == 'human':
-            raise NotImplemented()
-        elif self.render_mode == 'array':
-            print(self._get_obs()['screen'])
 
 
-    def close(self):
-        pass
+'''
+class DragSlider(ScreenEnv):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+'''
+
 
