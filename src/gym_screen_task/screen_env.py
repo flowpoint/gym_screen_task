@@ -59,6 +59,7 @@ class ScreenEnv(gym.Env):
                 )
 
         # mouse movement (absolute)
+        # mouse_abs_movement is ignored for now (notimplemented)
         self.mouse_abs_move = spaces.Box(
                 low=np.array([0,0], dtype=np.int64),
                 high=np.array(self.resolution, dtype=np.int64),
@@ -85,18 +86,38 @@ class ScreenEnv(gym.Env):
                 }
                 )
 
+        # use a semantic image, with these classes
+        # rgb graphics can be overlayed/generated on top of these
+        self.semantic_class = {
+                'cursor':1,
+                'button':2,
+                }
+
         self.cursor_pos = np.array([0,0])
-        self.cursor_shape = np.array([[1]])
+        # simple one pixel
+        self.cursor_shape = np.ones([1,1]) * self.semantic_class['cursor']
         self.cursor_size = self.cursor_shape.shape
 
         self.button_pos = np.array([16,16])
         assert all(np.zeros([2]) <= self.button_pos)
         assert all(self.button_pos < self.resolution)
-        self.button_shape = np.array([[2]])
+        # simple one pixel
+        self.button_shape = np.ones([1,1]) * self.semantic_class['button']
         self.button_size = self.cursor_shape.shape
 
     def _get_info(self):
         return {}
+
+    def _get_env_state(self):
+        screenbuf = np.zeros(self.resolution, dtype=np.int64)
+
+        x,y = self.button_pos
+        xr = slice(x, x+self.button_size[0])
+        yr = slice(y, y+self.button_size[1])
+        screenbuf[xr, yr] = self.button_shape
+
+        return {"screen":screenbuf, "task_description":""}
+
 
     def _get_obs(self):
         screenbuf = np.zeros(self.resolution, dtype=np.int64)
@@ -106,6 +127,7 @@ class ScreenEnv(gym.Env):
         yr = slice(y, y+self.button_size[1])
         screenbuf[xr, yr] = self.button_shape
 
+        # cursor overlays everything
         x,y = self.cursor_pos
         xr = slice(x, x+self.cursor_size[0])
         yr = slice(y, y+self.cursor_size[1])
@@ -138,35 +160,35 @@ class ScreenEnv(gym.Env):
         raise NotImplemented('use a subclass instead of ScreenEnv directly')
 
     def _cursor_move(self, action):
-        movement = [
-                [0,1],
-                [1,0],
-                [0,-1],
-                [-1,0],
-                [0,0],
-                ]
-        self.cursor_pos = (np.array(self.cursor_pos) + movement[action]).clip(np.array([0,0]), self.resolution)
+        # ignore absolute_mouse movement for now (notimplemented)
+        movement = action['mouse_rel_move']
+        self.cursor_pos = (np.array(self.cursor_pos) + movement).clip(np.array([0,0]), self.resolution)
 
-
-
-    def step(self, action):
+    def _environ_step(self, action):
         self._cursor_move(action)
 
-        reward, terminated = self._get_step_reward(action) 
+    def step(self, action):
 
-        obs = self._get_obs()
+        old_env_state = self._get_env_state()
+        self._environ_step(action)
+        new_env_state = self._get_env_state()
+        
+        reward, terminated = self._get_step_reward(action, old_env_state, new_env_state)
+
+        new_obs = self._get_obs()
+
         info = self._get_info()
         self.render()
         truncated = False
-        return obs, reward, terminated, truncated, info
+        return new_obs, reward, terminated, truncated, info
 
 
 class ClickButtonEnv(ScreenEnv):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def _get_step_reward(self, action):
-        if all(self.cursor_pos == self.button_pos):
+    def _get_step_reward(self, action, old_obs, new_obs):
+        if new_obs['screen'][self.cursor_pos[0], self.cursor_pos[1]] == self.semantic_class['button']:
             reward = 1.
             terminated = True
         else: 
@@ -174,6 +196,8 @@ class ClickButtonEnv(ScreenEnv):
             terminated = False
 
         return reward, terminated
+
+
 
 class DragSliderEnv(ScreenEnv):
     def __init__(self, *args, **kwargs):

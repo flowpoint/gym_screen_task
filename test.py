@@ -16,15 +16,11 @@ np.set_printoptions(linewidth=128, edgeitems=128)
 obs, info = env.reset()
 
 for i in range(16):
-    obs, reward, term, trunc, info = env.step(0)
-
-for i in range(16):
-    obs, reward, term, trunc, info = env.step(1)
+    obs, reward, term, trunc, info = env.step({'mouse_rel_move':[1,1]})
     print(reward)
 
-obs, reward, term, trunc, info = env.step(4)
+obs, reward, term, trunc, info = env.step({'mouse_rel_move':[0,0]})
 print(reward)
 assert reward == 1.
 
-obs, info = env.reset()
 
