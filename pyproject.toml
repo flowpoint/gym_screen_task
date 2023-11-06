@@ -1,0 +1,45 @@
+[build-system]
+requires = [
+  "setuptools",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gym_screen_task"
+version = "0.0.1"
+authors = [{name="flowpoint", email="flowpoint@protonmail.com"}]
+description = "poc for a rl-gymnasium task where an agent has to control abstract screen and ui elements"
+requires-python = ">=3.11"
+license = {text = "MIT License"}
+readme = "readme.md"
+dependencies = [
+	"click",
+	"more_itertools",
+]
+
+[project.optional-dependencies]
+test = [
+	"pytest",
+	"mypy",
+	"pep8",
+	"coverage",
+	"build",
+	]
+
+[tool.pytest.ini_options]
+addopts = [
+    "--import-mode=importlib",
+    ]
+markers = [
+    "incremental",
+    "unit",
+    "slow",
+    "integration"
+    ]
+testpaths = [
+    "tests"
+    ]
+
+
+[project.scripts]
+gym_screen_task = "gym_screen_task.main:main"
