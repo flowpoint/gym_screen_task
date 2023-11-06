@@ -13,6 +13,16 @@ env = gym.make('gym_screen_task/click_button-v0', render_mode=render_mode, resol
 np.set_printoptions(linewidth=128, edgeitems=128)
 obs, info = env.reset()
 
-for i in range(10):
-    obs, reward, term, trunc, info = env.step(4)
+for i in range(16):
+    obs, reward, term, trunc, info = env.step(0)
+
+for i in range(16):
+    obs, reward, term, trunc, info = env.step(1)
     print(reward)
+
+obs, reward, term, trunc, info = env.step(4)
+print(reward)
+assert reward == 1.
+
+obs, info = env.reset()
+

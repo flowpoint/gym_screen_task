@@ -2,41 +2,43 @@
 
 # brainstormed subtasks:
 
-click a button
+[ ] click a button
+ 
+[ ] find a button
 
-find a button
+[ ] drag a slider
 
-drag a slider
-
-press keyboard button
-
-draw a figure
-
-track a target with the mouse
-
-press a button with timing
-
-move a cursor object with keyboard
-
-move the viewport with the keyboard
-
-move the viewport with the mouse
-
-daraf select multiple objects with mouse
-
-avoid object with cursor/mouse
-
-copy text
-
-write into textfield
-
-paste text
-
-drag the viewport with mouse
-
-let the mouse get captured in a field
-
-exit the mouse capture in a field
+[ ] click a slider
+ 
+[ ] press keyboard button
+ 
+[ ] draw a figure
+ 
+[ ] track a target with the mouse
+ 
+[ ] press a button with timing
+ 
+[ ] move a cursor object with keyboard
+ 
+[ ] move the viewport with the keyboard
+ 
+[ ] move the viewport with the mouse
+ 
+[ ] daraf select multiple objects with mouse
+ 
+[ ] avoid object with cursor/mouse
+ 
+[ ] copy text
+ 
+[ ] write into textfield
+ 
+[ ] paste text
+ 
+[ ] drag the viewport with mouse
+ 
+[ ] let the mouse get captured in a field
+ 
+[ ] exit the mouse capture in a field
 
 # other stuff
 

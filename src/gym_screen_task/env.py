@@ -15,7 +15,7 @@ class ScreenEnv(gym.Env):
                 {
                     "screen": spaces.Box(
                         low=0,
-                        high=1,
+                        high=2,
                         shape=np.array(resolution, dtype=np.int64),
                         dtype=int
                         )
@@ -27,13 +27,28 @@ class ScreenEnv(gym.Env):
         self.action_space = spaces.Discrete(5)
 
         self.cursor_pos = np.array([0,0])
-        self.button_pos = np.array([64,64])
+        self.cursor_shape = np.array([[1]])
+        self.cursor_size = self.cursor_shape.shape
+
+        self.button_pos = np.array([16,16])
+        assert all(np.zeros([2]) <= self.button_pos)
+        assert all(self.button_pos < self.resolution)
+        self.button_shape = np.array([[2]])
+        self.button_size = self.cursor_shape.shape
 
 
     def _get_obs(self):
         screenbuf = np.zeros(self.resolution, dtype=np.int64)
+
+        x,y = self.button_pos
+        xr = slice(x, x+self.button_size[0])
+        yr = slice(y, y+self.button_size[1])
+        screenbuf[xr, yr] = self.button_shape
+
         x,y = self.cursor_pos
-        screenbuf[x][y] = 1
+        xr = slice(x, x+self.cursor_size[0])
+        yr = slice(y, y+self.cursor_size[1])
+        screenbuf[xr, yr] = self.cursor_shape
         return {"screen":screenbuf}
 
     def _get_info(self):
