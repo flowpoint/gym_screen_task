@@ -139,6 +139,7 @@ class ScreenEnv(gym.Env):
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self.cursor_pos = [0,0]
+        self.env_hidden_state = {}
 
         obs = self._get_obs()
         info = self._get_info()
@@ -170,7 +171,6 @@ class ScreenEnv(gym.Env):
         self._cursor_move(action)
 
     def step(self, action):
-
         old_env_state = self._get_env_state()
         self._environ_step(action)
         new_env_state = self._get_env_state()
@@ -213,4 +213,41 @@ class DragSliderEnv(ScreenEnv):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    def mouse_on_button(self, new_obs):
+        return new_obs['screen'][self.cursor_pos[0], self.cursor_pos[1]] == self.semantic_class['button']
 
+    def _get_step_reward(self, action, old_obs, new_obs):
+        if self.mouse_on_button(new_obs) and action['mouse_buttons'][0] == 1:
+            self.env_hidden_state['slider_pressed'] = True
+            reward = 0.
+            terminated = False
+        # slider slid 5 units to right and mouse was released
+        elif self.cursor_pos[0] > self.button_pos[0]+5 and action['mouse_buttons'][0] == 0:
+            reward = 1.
+            terminated = True
+        else: 
+            reward = 0.
+            terminated = False
+            self.env_hidden_state['last_press_correct'] = False
+
+        return reward, terminated
+
+class PressKeyEnv(ScreenEnv):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def _get_step_reward(self, action, old_obs, new_obs):
+        if action['keyboard'][0] == 1:
+            self.env_hidden_state['last_press_correct'] = True
+            reward = 0.
+            terminated = False
+        # slider slid 5 units to right and mouse was released
+        elif action['keyboard'][0] == 0 and self.env_hidden_state['last_press_correct'] == True:
+            reward = 1.
+            terminated = True
+        else: 
+            reward = 0.
+            terminated = False
+            self.env_hidden_state['last_press_correct'] = False
+
+        return reward, terminated

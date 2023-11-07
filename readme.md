@@ -2,15 +2,17 @@
 
 # brainstormed subtasks:
 
-[ ] click a button
- 
 [ ] find a button
 
-[ ] drag a slider
+[x] click a button
+
+[ ] click the right button of many
+
+[x] drag a slider
 
 [ ] click a slider
  
-[ ] press keyboard button
+[x] press keyboard button
  
 [ ] draw a figure
  
@@ -24,7 +26,7 @@
  
 [ ] move the viewport with the mouse
  
-[ ] daraf select multiple objects with mouse
+[ ] drag select multiple objects with mouse
  
 [ ] avoid object with cursor/mouse
  
@@ -39,6 +41,8 @@
 [ ] let the mouse get captured in a field
  
 [ ] exit the mouse capture in a field
+
+[ ] navigate through elements with keyboard
 
 # other stuff
 
