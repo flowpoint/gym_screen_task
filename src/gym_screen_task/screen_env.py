@@ -137,7 +137,8 @@ class ScreenEnv(gym.Env):
         screenbuf[x,y] = int(self.semantic_class['button'])
         assert np.any(screenbuf != 0.)
 
-        return {"screen":screenbuf, "task_description":""}
+        #return {"screen":screenbuf, "task_description":""}
+        return {"screen":screenbuf}
 
 
     def _get_frame(self):
@@ -196,7 +197,8 @@ class ScreenEnv(gym.Env):
 
         framestack = np.stack(self.framehist, dtype=np.uint8)[0]
 
-        obs = {"screen":framestack, "task_description":""}
+        #obs = {"screen":framestack, "task_description":""}
+        obs = {"screen":framestack}
 
         return obs, info
 
@@ -267,7 +269,7 @@ class ScreenEnv(gym.Env):
 
     def _cursor_move(self, action):
         # ignore absolute_mouse movement for now (notimplemented)
-        movement = action['mouse_rel_move']
+        movement = action #action['mouse_rel_move']
         self.cursor_pos = (self.cursor_pos + movement).clip(np.array([0,0]), self.resolution-1)
 
     def _environ_step(self, action):
@@ -296,14 +298,19 @@ class ScreenEnv(gym.Env):
 
         #assert list(framestack.shape) == [self.frame_stack, self.resolution[0], self.resolution[1], self.num_channels]
 
-        obs = {"screen":new_obs, "task_description":""}
+        #obs = {"screen":new_obs, "task_description":""}
+        obs = {"screen": new_obs}
 
         return obs, reward, terminated, truncated, info
 
 
-class ClickButtonEnv(ScreenEnv):
+class FindButtonEnv(ScreenEnv):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.action_space = self.mouse_rel_move
+        self.observation_space = spaces.Dict({
+            "screen": self.observation_space['screen']
+            })
 
     def mouse_on_button(self, new_obs):
         cur = self.cursor_pos.round().clip(np.array([0,0]), self.resolution-1).astype(np.int64)
@@ -312,7 +319,6 @@ class ClickButtonEnv(ScreenEnv):
 
     def _get_step_reward(self, action, old_obs, new_obs):
         # use the convention of normalizing reward between [-1, 1] per step
-
         # define reward mixture
 
         # reward factor for finishing correct
@@ -400,3 +406,7 @@ class PressKeyEnv(ScreenEnv):
             self.env_hidden_state['last_press_correct'] = False
 
         return reward, terminated
+
+
+
+

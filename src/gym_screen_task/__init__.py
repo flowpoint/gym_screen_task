@@ -1,6 +1,7 @@
 from gym_screen_task.click_button_env import ClickButtonEnv as ClickButtonEnvV0
-from gym_screen_task.screen_env import ScreenEnv, DragSliderEnv, ClickButtonEnv
+from gym_screen_task.screen_env import ScreenEnv, DragSliderEnv, FindButtonEnv
 from gymnasium.envs.registration import register
+
 
 '''
 register(
@@ -10,9 +11,9 @@ register(
         )
 '''
 register(
-        id='gym_screen_task/click_button-v1',
-        entry_point='gym_screen_task:ClickButtonEnv',
-        max_episode_steps=600,
+        id='gym_screen_task/find_button-v0',
+        entry_point='gym_screen_task:FindButtonEnv',
+        #max_episode_steps=600,
         )
 
 register(
@@ -26,3 +27,4 @@ register(
         entry_point='gym_screen_task:ClickButtonEnv',
         max_episode_steps=300,
         )
+
