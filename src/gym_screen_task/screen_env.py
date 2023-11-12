@@ -122,7 +122,7 @@ class ScreenEnv(gym.Env):
 
 
     def _get_info(self):
-        return {'cursor': self.cursor_pos, "button": self.button_pos, "timestep": self.timestep}
+        return {'cursor': self.cursor_pos, "button": self.button_pos, "timestep": self.timestep, 'successful':self.env_hidden_state['successful']}
 
     def _get_env_state(self):
         screenbuf = np.zeros(self.frameshape, dtype=np.uint8)
@@ -187,7 +187,7 @@ class ScreenEnv(gym.Env):
         self.button_pos = self._sample_new_button_pos()
         assert all(np.zeros([2]) <= self.button_pos)
         assert all(self.button_pos < self.resolution)
-        self.env_hidden_state = {}
+        self.env_hidden_state = {'successful':False}
 
         obs = self._get_frame()
         self.timestep = 0
@@ -329,6 +329,7 @@ class FindButtonEnv(ScreenEnv):
         if self.mouse_on_button(new_obs):
             #print(f'mouse: {self.cursor_pos} button: {self.button_pos}')
             reward = 1. * term_scale_factor
+            self.env_hidden_state['successful'] = True
         elif self.timestep >= self.timelimit:
             reward = -1.0 * term_scale_factor
         else: 
