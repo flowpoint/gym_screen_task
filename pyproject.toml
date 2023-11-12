@@ -9,7 +9,7 @@ name = "gym_screen_task"
 version = "0.0.1"
 authors = [{name="flowpoint", email="flowpoint@protonmail.com"}]
 description = "poc for a rl-gymnasium task where an agent has to control abstract screen and ui elements"
-requires-python = ">=3.11"
+requires-python = ">=3.9"
 license = {text = "MIT License"}
 readme = "readme.md"
 dependencies = [
