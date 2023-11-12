@@ -16,7 +16,11 @@ dependencies = [
 	"click",
 	"more_itertools",
     "gymnasium",
-    "numpy"
+    "numpy",
+    "stable_baselines3",
+    "pygame",
+    "optuna",
+    "aim"
 ]
 
 [project.optional-dependencies]
@@ -27,6 +31,9 @@ test = [
 	"coverage",
 	"build",
 	]
+dev = [
+    "ipython"
+    ]
 
 [tool.pytest.ini_options]
 addopts = [
