@@ -29,7 +29,6 @@ def make_env(rank, hparams):
                 resolution=hparams['resolution'], 
                 timelimit=100, 
                 noise=hparams['noise'], 
-                frame_stack=1,
                 random_cursor_start=True, 
                 envid=rank)
         #env = gym.wrappers.FilterObservation(env, filter_keys=['screen'])
@@ -155,16 +154,15 @@ def main():
 
     callback = eval_callback 
     #train_w_render(learn=True)
+    print(model.policy)
     model.learn(total_timesteps=1_000_000, callback=eval_callback)
     model.save('longtrain1')
-    #model.learn(total_timesteps=10_000_000, callback=eval_callback)
-    #print(model.policy)
 
 
 
 
 if __name__ == '__main__':
     freeze_support()
-    #main()
-    demo()
+    main()
+    #demo()
 
