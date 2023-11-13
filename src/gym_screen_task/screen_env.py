@@ -9,12 +9,13 @@ class ScreenEnv(gym.Env):
     # cursor is moved with a relative position
     metadata = {"render_modes": ["human", "array"], "render_fps": 60}
 
-    def __init__(self, render_mode=None, resolution=[128,128], noise=None, timelimit=600, frame_stack=1, random_cursor_start=False):
+    def __init__(self, render_mode=None, resolution=[128,128], noise=None, timelimit=600, frame_stack=1, random_cursor_start=False, envid=None):
         self.resolution = np.array(resolution, dtype=np.int64)
         self.render_mode = render_mode
         self.random_cursor_start = random_cursor_start
 
         self.frame_stack = frame_stack
+        self.envid = envid
 
         self.window = None
         self.clock = None
@@ -34,7 +35,7 @@ class ScreenEnv(gym.Env):
                         low=0,
                         high=255,
                         #shape=np.array([frame_stack] + list(self.frameshape), dtype=np.uint8),
-                        shape=np.array(list(self.frameshape), dtype=np.uint8),
+                        shape=list(self.frameshape),
                         #shape=np.array([1,31,31], dtype=np.uint8),
                         dtype=np.uint8
                         ),
@@ -125,7 +126,12 @@ class ScreenEnv(gym.Env):
         return {'cursor': self.cursor_pos, "button": self.button_pos, "timestep": self.timestep, 'successful':self.env_hidden_state['successful']}
 
     def _get_env_state(self):
-        screenbuf = np.zeros(self.frameshape, dtype=np.uint8)
+        #screenbuf = np.zeros(self.frameshape, dtype=np.uint8)
+        # try screenbuf with positional embeddings
+        l = np.linspace([0],[1], 32)
+        g = ((l * (l.T)) *32).round().astype(np.uint8)
+        screenbuf = g.reshape(self.frameshape)
+        assert list(screenbuf.shape) == list(self.frameshape)
         x,y = self.button_pos
         '''
         xr = slice(x, x+self.button_size[0]+1)
@@ -142,7 +148,12 @@ class ScreenEnv(gym.Env):
 
 
     def _get_frame(self):
-        screenbuf = np.zeros(self.frameshape, dtype=np.uint8)
+        #screenbuf = np.zeros(self.frameshape, dtype=np.uint8)
+        l = np.linspace([0],[1], 32)
+        g = ((l * (l.T)) *32).round().astype(np.uint8)
+        screenbuf = g.reshape(self.frameshape)
+        assert list(screenbuf.shape) == self.frameshape
+
         x,y = self.button_pos
         screenbuf[x,y] = int(self.semantic_class['button'])
         assert np.any(screenbuf != 0.)
@@ -199,6 +210,7 @@ class ScreenEnv(gym.Env):
 
         #obs = {"screen":framestack, "task_description":""}
         obs = {"screen":framestack}
+        obs = {"screen": np.stack([self.cursor_pos, self.button_pos]).reshape([4,1,1])}
 
         return obs, info
 
@@ -251,7 +263,8 @@ class ScreenEnv(gym.Env):
             self._render_frame()
                     
         elif self.render_mode == 'array':
-            print(self._get_frame()['screen'])
+            #print(self._get_frame().reshape(self.resolution))
+            #print(self.button_pos, self.cursor_pos, self.envid, self.timestep)
             pass
 
     def step(self, action):
@@ -276,21 +289,19 @@ class ScreenEnv(gym.Env):
         self._cursor_move(action)
 
     def step(self, action):
+        bp = self.button_pos
+
         old_env_state = self._get_env_state()
         self._environ_step(action)
         new_env_state = self._get_env_state()
         
         self.timestep += 1
-        reward, terminated = self._get_step_reward(action, old_env_state, new_env_state)
+        reward, terminated, truncated = self._get_step_reward(action, old_env_state, new_env_state)
+        assert not (terminated and truncated)
 
         new_obs = self._get_frame()
 
         info = self._get_info()
-
-        if self.timestep >= self.timelimit:
-            truncated = True
-        else: 
-            truncated = False
 
         #self.framehist.pop(0)
         #self.framehist.append(new_obs)
@@ -300,6 +311,9 @@ class ScreenEnv(gym.Env):
 
         #obs = {"screen":new_obs, "task_description":""}
         obs = {"screen": new_obs}
+        obs = {"screen": np.stack([self.cursor_pos, self.button_pos]).reshape([4,1,1])}
+
+        assert all(self.button_pos == bp)
 
         return obs, reward, terminated, truncated, info
 
@@ -311,6 +325,15 @@ class FindButtonEnv(ScreenEnv):
         self.observation_space = spaces.Dict({
             "screen": self.observation_space['screen']
             })
+
+        self.observation_space = spaces.Dict({
+            "screen": spaces.Box(
+                        low=0,
+                        high=32,
+                        shape=[4,1,1],
+                        dtype=float
+                        )})
+        #self.observation_space = self.observation_space['screen']
 
     def mouse_on_button(self, new_obs):
         cur = self.cursor_pos.round().clip(np.array([0,0]), self.resolution-1).astype(np.int64)
@@ -330,20 +353,29 @@ class FindButtonEnv(ScreenEnv):
             #print(f'mouse: {self.cursor_pos} button: {self.button_pos}')
             reward = 1. * term_scale_factor
             self.env_hidden_state['successful'] = True
+            terminated = True
+            truncated = False
         elif self.timestep >= self.timelimit:
             reward = -1.0 * term_scale_factor
+            terminated = False
+            truncated = True
         else: 
             cursor_button_dist = np.sqrt(((self.button_pos - self.cursor_pos)**2).sum()) 
             norm_dist = cursor_button_dist / np.sqrt((self.resolution**2).sum())
             assert 0. <= norm_dist <= 1.
             reward = dist_scale_factor * (0. - norm_dist)
+            terminated = False
+            truncated = False
 
+            #print(self.button_pos, self.cursor_pos, norm_dist, reward)
             #reward = -0.0
 
+        '''
         if self.timestep >= self.timelimit and self.mouse_on_button(new_obs):
             terminated = True
         else:
             terminated = False
+        '''
 
         # normalize across factors again
         reward /= sum([term_scale_factor, dist_scale_factor])
@@ -361,7 +393,7 @@ class FindButtonEnv(ScreenEnv):
             self.env_hidden_state['last_press_correct'] = False
         '''
 
-        return reward, terminated
+        return reward, terminated, truncated
 
 
 
@@ -407,7 +439,3 @@ class PressKeyEnv(ScreenEnv):
             self.env_hidden_state['last_press_correct'] = False
 
         return reward, terminated
-
-
-
-
