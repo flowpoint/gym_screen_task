@@ -98,7 +98,7 @@ class ScreenEnv(gym.Env):
 
         self.timelimit = timelimit
 
-        max_text_context = 512
+        self.max_text_context = 512
         self.fixed_noise = noise
 
         # screen pixels in rgb
@@ -108,6 +108,12 @@ class ScreenEnv(gym.Env):
         self.frameshape = resolution + [self.num_channels]
         self.observation_space = spaces.Dict(
                 {
+                    "time": spaces.Box(
+                        low=0,
+                        high=self.timelimit,
+                        shape=[1],
+                        dtype=float
+                        ),
                     "screen": spaces.Box(
                         low=0,
                         high=255,
@@ -116,7 +122,7 @@ class ScreenEnv(gym.Env):
                         ),
                     "task_description": spaces.Text(
                         min_length=0,
-                        max_length=512,
+                        max_length=self.max_text_context,
                         charset=string.printable,
                         )
                     }
@@ -193,12 +199,13 @@ class ScreenEnv(gym.Env):
         #self.button_size = self.button_shape.shape
 
         self.eps = 0
+        self.timestep = 0
         self.reset()
 
     def _get_info(self):
-        return {'cursor': self.cursor_pos, "button": self.button_pos, "timestep": self.timestep, 'successful':self.env_hidden_state['successful']}
+        return {'cursor': self.cursor_pos, "button": self.button_pos, "timestep": self.timestep, 'is_success':self.env_hidden_state['successful'], "dist": self.dist}
 
-    def _get_env_state(self):
+    def _get_semantic_frame(self):
         ''' get a semantic image representation of the env state '''
         screenbuf = np.zeros(self.frameshape, dtype=np.uint8)
         assert list(screenbuf.shape) == list(self.frameshape)
@@ -219,8 +226,11 @@ class ScreenEnv(gym.Env):
 
     def _get_frame(self):
         if self.background_pattern == 'gradient':
-            l = np.linspace([0],[1], 32)
-            g = ((l * (l.T)) * 32).round()
+            # create a gradient from 0 to background_max_color in x and y direction
+            background_max_color = 32
+            xgrad = np.linspace([0],[1], self.resolution[0])
+            ygrad = np.linspace([0],[1], self.resolution[1])
+            g = ((xgrad * (ygrad.T)) * background_max_color).round()
             screenbuf = g.reshape(self.frameshape).astype(np.uint8)
         elif self.background_pattern == 'zeros':
             screenbuf = np.zeros(self.frameshape, dtype=np.uint8)
@@ -255,7 +265,7 @@ class ScreenEnv(gym.Env):
         if self.fixed_noise:
             self.noise = self.fixed_noise
         else:
-            self.noise = 16 / 50000 * self.eps
+            self.noise = max(self.resolution)-1#1. #16 / 50000 * self.eps
 
         '''
         if self.eps % 500 == 0:
@@ -273,23 +283,19 @@ class ScreenEnv(gym.Env):
         assert all(self.button_pos < self.resolution)
         self.env_hidden_state = {'successful':False}
 
-        obs = self._get_frame()
+        self.dist = self.button_pos - self.cursor_pos
+
+        obs = self._get_obs()
         self.timestep = 0
         info = self._get_info()
-
-        #obs = {"screen":obs, "task_description":""}
-        obs = {"screen":obs}
-        obs = {"screen": np.stack([self.cursor_pos, self.button_pos]).reshape([4,1,1])}
-
         return obs, info
 
 
     def render(self):
         if self.render_mode == 'human':
             self.renderer.render_frame({'button_pos':self.button_pos, 'cursor_pos':self.cursor_pos})
-                    
         elif self.render_mode == 'array':
-            #print(self._get_frame().reshape(self.resolution))
+            print(self._get_frame().reshape(self.resolution))
             #print(self.button_pos, self.cursor_pos, self.envid, self.timestep)
             pass
 
@@ -312,43 +318,40 @@ class ScreenEnv(gym.Env):
         self.cursor_pos = (self.cursor_pos + movement).clip(np.array([0,0]), self.resolution-1)
 
     def _environ_step(self, action):
+        ''' apply actions to environment '''
         self._cursor_move(action)
 
+    def _get_obs(self):
+        frame = self._get_frame()
+        obs = {"screen": frame, "time": np.array([self.timestep])}
+        #obs = {"screen":obs, "task_description":""}
+        #obs = {"screen": np.stack([self.cursor_pos, self.button_pos]).reshape([4,1,1])}
+        return obs
+
     def step(self, action):
-        old_env_state = self._get_env_state()
+        old_env_state = self._get_semantic_frame()
         self._environ_step(action)
-        new_env_state = self._get_env_state()
+        new_env_state = self._get_semantic_frame()
         
         self.timestep += 1
         reward, terminated, truncated = self._get_step_reward(action, old_env_state, new_env_state)
         assert not (terminated and truncated)
 
-        new_obs = self._get_frame()
+        obs = self._get_obs()
         info = self._get_info()
-
-        #obs = {"screen":new_obs, "task_description":""}
-        obs = {"screen": new_obs}
-        obs = {"screen": np.stack([self.cursor_pos, self.button_pos]).reshape([4,1,1])}
-
         return obs, reward, terminated, truncated, info
 
 
 class FindButtonEnv(ScreenEnv):
+    ''' goal is to move the mouse with relative movement to the button position'''
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.action_space = self.mouse_rel_move
         self.observation_space = spaces.Dict({
-            "screen": self.observation_space['screen']
+            "screen": self.observation_space['screen'],
+            "time": self.observation_space['time']
             })
 
-        self.observation_space = spaces.Dict({
-            "screen": spaces.Box(
-                        low=0,
-                        high=32,
-                        shape=[4,1,1],
-                        dtype=float
-                        )})
-        #self.observation_space = self.observation_space['screen']
 
     def mouse_on_button(self, new_obs):
         cur = self.cursor_pos.round().clip(np.array([0,0]), self.resolution-1).astype(np.int64)
@@ -364,36 +367,35 @@ class FindButtonEnv(ScreenEnv):
         # reward factor for minimizing distance
         dist_scale_factor = 0.5
 
+        factor_normalizing_factor = 1 / sum([term_scale_factor, dist_scale_factor])
+
         if self.mouse_on_button(new_obs):
             #print(f'mouse: {self.cursor_pos} button: {self.button_pos}')
-            reward = 1. * term_scale_factor
+            #reward = 1. * term_scale_factor
+
+            reward = 1. - 0.9*(self.timestep / self.timelimit)
+
             self.env_hidden_state['successful'] = True
             terminated = True
             truncated = False
         elif self.timestep >= self.timelimit:
             reward = -1.0 * term_scale_factor
-            terminated = False
-            truncated = True
+            reward = 0.
+            # treat this as a timeout, i.e. the agent taking too long to do a ui task
+            # therefore we terminate and not truncate
+            terminated = True
+            truncated = False
         else: 
             cursor_button_dist = np.sqrt(((self.button_pos - self.cursor_pos)**2).sum()) 
             norm_dist = cursor_button_dist / np.sqrt((self.resolution**2).sum())
             assert 0. <= norm_dist <= 1.
-            reward = dist_scale_factor * (0. - norm_dist)
+            #reward = dist_scale_factor * (0. - norm_dist)
+            #reward = 1. - 0.9*(self.timestep / self.timelimit)
+            reward = 0.
             terminated = False
             truncated = False
 
-            #print(self.button_pos, self.cursor_pos, norm_dist, reward)
-            #reward = -0.0
-
-        '''
-        if self.timestep >= self.timelimit and self.mouse_on_button(new_obs):
-            terminated = True
-        else:
-            terminated = False
-        '''
-
         # normalize across factors again
-        reward /= sum([term_scale_factor, dist_scale_factor])
         '''
         if self.mouse_on_button(new_obs) and action['mouse_buttons'][0] == 1:
             self.env_hidden_state['last_press_correct'] = True
@@ -408,6 +410,7 @@ class FindButtonEnv(ScreenEnv):
             self.env_hidden_state['last_press_correct'] = False
         '''
 
+        reward *= factor_normalizing_factor
         return reward, terminated, truncated
 
 
@@ -434,6 +437,7 @@ class DragSliderEnv(ScreenEnv):
             self.env_hidden_state['last_press_correct'] = False
 
         return reward, terminated
+
 
 class PressKeyEnv(ScreenEnv):
     def __init__(self, *args, **kwargs):
