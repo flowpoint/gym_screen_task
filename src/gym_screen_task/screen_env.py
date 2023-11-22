@@ -7,6 +7,11 @@ import string
 import os
 import socket
 
+from torchvision.transforms.functional import resize
+from torchvision.transforms import InterpolationMode
+
+from PIL import Image
+
 class Renderer:
     ''' a pygame render class for the screen env '''
     def __init__(self, 
@@ -77,6 +82,7 @@ class ScreenEnv(gym.Env):
                  random_cursor_start=False,
                  envid=None, 
                  resolution=[128,128], 
+                 obs_resolution=[128,128],
                  timelimit=600, 
                  render_mode=None, 
                  background_pattern='zeros'
@@ -106,6 +112,7 @@ class ScreenEnv(gym.Env):
         self.num_channels = 1
 
         self.frameshape = resolution + [self.num_channels]
+        self.obs_shape = obs_resolution + [self.num_channels]
         self.observation_space = spaces.Dict(
                 {
                     "time": spaces.Box(
@@ -117,7 +124,7 @@ class ScreenEnv(gym.Env):
                     "screen": spaces.Box(
                         low=0,
                         high=255,
-                        shape=list(self.frameshape),
+                        shape=list(self.obs_shape),
                         dtype=np.uint8
                         ),
                     "task_description": spaces.Text(
@@ -323,7 +330,11 @@ class ScreenEnv(gym.Env):
 
     def _get_obs(self):
         frame = self._get_frame()
-        obs = {"screen": frame, "time": np.array([self.timestep])}
+        #im = Image.fromarray(frame.reshape(self.resolution)).resize(self.obs_shape[:2])
+        #im = Image.fromarray(frame.reshape(self.resolution)).resize(self.obs_shape[:2])
+        im = resize(Image.fromarray(frame.reshape(self.resolution)), self.obs_shape[:2], interpolation=InterpolationMode.NEAREST)
+        obs_shaped_frame = np.array(im).astype(np.uint8).reshape(self.obs_shape)
+        obs = {"screen": obs_shaped_frame, "time": np.array([self.timestep])}
         #obs = {"screen":obs, "task_description":""}
         #obs = {"screen": np.stack([self.cursor_pos, self.button_pos]).reshape([4,1,1])}
         return obs

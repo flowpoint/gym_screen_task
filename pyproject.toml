@@ -18,6 +18,7 @@ dependencies = [
     "gymnasium",
     "numpy",
     "stable_baselines3",
+    "pillow",
     "pygame",
     "optuna",
     "aim"

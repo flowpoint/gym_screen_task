@@ -46,7 +46,7 @@ def make_env(rank, hparams):
     return _init
 
 
-def get_vec_env(n_cpu, aim_run, hparams, dummy=False):
+def get_vec_env(n_cpu, aim_run=None, hparams={}, dummy=False):
     print(f'using {n_cpu} parallel environments')
     #env = make_env(0)()
     if dummy == False:
@@ -54,7 +54,9 @@ def get_vec_env(n_cpu, aim_run, hparams, dummy=False):
     else:
         env = stable_baselines3.common.vec_env.DummyVecEnv([make_env(rank, hparams) for rank in range(n_cpu)])
 
-    env = AimVecMonitor(env, aim_run, info_keywords=['dist'])
+    if aim_run is not None:
+        env = AimVecMonitor(env, aim_run, info_keywords=['dist'])
+
     env = stable_baselines3.common.vec_env.VecFrameStack(env, 2)
     env = stable_baselines3.common.vec_env.VecTransposeImage(env)
     env = stable_baselines3.common.vec_env.VecNormalize(env)
@@ -69,22 +71,10 @@ def get_vec_env(n_cpu, aim_run, hparams, dummy=False):
 # resolution 64,64
 # fully random cursor and button pos
 
-#res = [32,32]
-res = [8,8]
-hparams = {
-        'lr': 0.0003,
-        'bs': 64,#8*2048,
-        'resolution': res,
-        'noise': max(res)-1,
-        'timelimit': 100,
-        'gamma':0.90, #99,
-        'clip':0.2,
-        'agent': 'ppo'
-        }
 
 def get_model(env, hparams):
     policy_kwargs = dict(
-        #net_arch=dict(pi=[8, 8192], vf=[32, 32]),
+        #net_arch=dict(pi=[8, 8], vf=[8, 8]),
         #net_arch=dict(pi=[8], qf=[8]),
         #net_arch=dict(pi=[8,8,4], vf=[8,8,4]),
         features_extractor_class=CustomCombinedExtractor,
@@ -115,14 +105,19 @@ def get_model(env, hparams):
 
     return model
 
-def demo(checkpoint='longtrain1'):
+def demo(hparams,checkpoint='longtrain1'):
     #n_cpu = len(os.sched_getaffinity(0))
     n_cpu = 1#len(os.sched_getaffinity(0))
-    env = get_vec_env(n_cpu, aim_run, hparams, dummy=True)
+    #hparams['res'] = [8,8]
+    env = get_vec_env(n_cpu, hparams=hparams, dummy=True)
     model = get_model(env, hparams)
+    #hparams['res'] = [32,32]
     if checkpoint is not None:
         #model = #model.load(checkpoint)
         model = PPO.load(checkpoint, env)
+
+    env = get_vec_env(n_cpu, hparams=hparams, dummy=True)
+    model.set_env(env)
 
     num_epochs = 20
     for ep in range(num_epochs):
@@ -149,11 +144,35 @@ def demo(checkpoint='longtrain1'):
             '''
 
         #print(reward, s)
-        print([inf for inf in info])
+        print([inf['is_success'] for inf in info])
 
 
 def main():
+    curriculum = {
+            "steps":[
+                {"res":[8,8], "num_steps":5_000_000},
+                {"res":[16,16], "num_steps":10_000_000},
+                {"res":[24,24], "num_steps":15_000_000},
+                {"res":[32,32], "num_steps":15_000_000},
+                ]
+            }
+
+    #res = [32,32]
+    res = [8,8]
+    hparams = {
+            'lr': 0.0003,
+            'bs': 2048,#64,#8*2048,
+            'resolution': res,
+            'curriculum':curriculum,
+            'noise': max(res)-1,
+            'timelimit': 100,
+            'gamma':0.98, #99,
+            'clip':0.2,
+            'agent': 'ppo'
+            }
+
     aim_run = Run()
+    aim_run.add_tag('screen_agents')
     aim_run['hparams'] = hparams
 
     n_cpu = len(os.sched_getaffinity(0))
@@ -167,29 +186,24 @@ def main():
             render=True)
 
     callback = eval_callback 
-    #train_w_render(learn=True)
     print(model.policy)
-    #model.learn(total_timesteps=10_000_000, callback=eval_callback)
-    model.learn(total_timesteps=500_000, callback=eval_callback)
-    '''
-    model.save('longtrain1')
-    hparams['res'] = [16,16]
-    print('env1 done')
-    env = get_vec_env(n_cpu, aim_run, hparams)
-    model.set_env(env)
-    model.learn(total_timesteps=500_000, callback=eval_callback)
-    '''
 
-    hparams['res'] = [32,32]
-    print('env2 done')
-    env = get_vec_env(n_cpu, aim_run, hparams)
-    model.set_env(env)
-    model.learn(total_timesteps=1_200_000, callback=eval_callback)
-    model.save('cnn_curriculum_8_to_32_model1')
+    print('starting curriculum')
+    for learn_step in curriculum['steps']:
+        #train_w_render(learn=True)
+        print(f'starting curriculum step: {learn_step}')
+        hparams['resolution'] = learn_step['res']
+        env = get_vec_env(n_cpu, aim_run, hparams)
+        model.set_env(env)
+        model.learn(total_timesteps=learn_step['num_steps'], callback=eval_callback)
+        print(f'finished curriculum step: {learn_step}')
+
+    #model.learn(total_timesteps=10_000_000, callback=eval_callback)
+    #model.save('cnn_curriculum_8_to_32_model1')
 
 
 if __name__ == '__main__':
     freeze_support()
     main()
-    #demo()
+    #demo(hparams, 'curriculum_8_to_32_model1.zip')
 

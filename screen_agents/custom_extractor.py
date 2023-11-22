@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torchvision.transforms import v2
 from gymnasium import spaces
 import gymnasium as gym
 
@@ -33,6 +34,7 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
         '''
 
 
+
         total_concat_size = 0
         # We need to know size of the output of this extractor,
         # so go over all the spaces and compute output feature sizes
@@ -41,41 +43,68 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
                 # We will just downsample one channel of the image by 4x4 and flatten.
                 # Assume the image is single-channel (subspace.shape[0] == 0)
                 torch.set_float32_matmul_precision('high')
+                print(subspace.shape)
+                n_stacked_frames = subspace.shape[0]
 
+                '''
                 model = nn.Sequential(
+                        #nn.Lambda(lambda x: x.to(memory_format=torch.channels_last)),
+                        #v2.Resize([32,32]),
                         nn.Flatten(),
-                        nn.Linear(subspace.shape[0]*subspace.shape[1]*subspace.shape[2], 16),
-                        nn.Dropout(),
+                        nn.Linear(n_stacked_frames*32*32, 32*32),
+                        nn.Linear(32*32, 32*32),
+                        #nn.Dropout(),
+                        #nn.LeakyReLU(),
+                        #nn.Linear(16,16),
+                        #nn.Dropout(),
                         nn.LeakyReLU(),
-                        nn.Linear(16,16),
-                        nn.Dropout(),
-                        nn.LeakyReLU(),
-                        nn.Linear(16,8),
+                        nn.Linear(32*32,8),
                         )
+                '''
 
                 n_input_channels = 1
                 pad = 'same'
                 '''
                 model = nn.Sequential(
-                        nn.Conv2d(n_input_channels, 8, kernel_size=5, stride=1, padding=pad),
-                        nn.Dropout(),
+                        v2.Resize([32,32]),
+                        nn.Conv2d(n_stacked_frames*n_input_channels, 4, kernel_size=5, stride=1, padding=pad),
+                        #nn.Dropout(),
                         nn.LeakyReLU(),
-                        nn.Conv2d(2, 8, kernel_size=5, stride=1, padding=pad),
-                        nn.Dropout(),
+                        nn.Conv2d(4, 4, kernel_size=5, stride=1, padding=pad),
+                        #nn.Dropout(),
                         nn.LeakyReLU(),
                         nn.AvgPool2d(16),
                         nn.Flatten(),
-                        nn.Linear(8*4,8),
-                        nn.Dropout(),
+                        nn.Linear(4*4,8),
+                        #nn.Dropout(),
                         nn.LeakyReLU(),
                         nn.Linear(8,8),
                         )
                 '''
+                model = nn.Sequential(
+                        v2.Resize([32,32]),
+                        nn.Conv2d(n_stacked_frames*n_input_channels, 2, kernel_size=2, stride=1, padding=pad),
+                        nn.Conv2d(2, 2, kernel_size=2, stride=2),
+                        nn.Dropout(0.2),
+                        nn.Conv2d(2, 2, kernel_size=2, stride=2),
+                        nn.Dropout(0.2),
+                        nn.Conv2d(2, 2, kernel_size=2, stride=2),
+                        nn.Dropout(0.2),
+                        nn.Conv2d(2, 2, kernel_size=2, stride=2),
+                        nn.Flatten(),
+                        nn.Linear(8,8),
+                        )
                 extractors[key] = torch.compile(model)
                 total_concat_size += 8
-                #total_concat_size += subspace.shape[1] // 4 * subspace.shape[2] // 4
-                #total_concat_size += 2*subspace.shape[1] * subspace.shape[2]
 
+            elif key == "time":
+                model = nn.Sequential(
+                        nn.Linear(2, 4),
+                        nn.LeakyReLU(),
+                        nn.Linear(4, 8),
+                        )
+                extractors[key] = torch.compile(model)
+                total_concat_size += 8
             '''
             elif key == "vector":
                 # Run through a simple MLP
