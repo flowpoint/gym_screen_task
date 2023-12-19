@@ -1,0 +1,4 @@
+use laion clip retrieval
+and laion 400m or 5B to bootstrap
+
+searching the knn with good prompts gives us decent screenshots that we could label or train a semantic segnet on

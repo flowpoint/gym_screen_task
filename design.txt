@@ -1,0 +1,9 @@
+maybe create a screen usage video dataset
+
+segment length 30s
+
+number of segments 1k to start
+
+
+according to openai vpt minecraft
+as little as 200 hours could be enough to train an inverse dynamics model

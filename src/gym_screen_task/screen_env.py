@@ -374,7 +374,7 @@ class FindButtonEnv(ScreenEnv):
         # define reward mixture
 
         # reward factor for finishing correct
-        term_scale_factor = 1.
+        term_scale_factor = 0.5
         # reward factor for minimizing distance
         dist_scale_factor = 0.5
 
@@ -384,7 +384,7 @@ class FindButtonEnv(ScreenEnv):
             #print(f'mouse: {self.cursor_pos} button: {self.button_pos}')
             #reward = 1. * term_scale_factor
 
-            reward = 1. - 0.9*(self.timestep / self.timelimit)
+            reward = term_scale_factor * (1. - 0.9*(self.timestep / self.timelimit))
 
             self.env_hidden_state['successful'] = True
             terminated = True
@@ -400,7 +400,7 @@ class FindButtonEnv(ScreenEnv):
             cursor_button_dist = np.sqrt(((self.button_pos - self.cursor_pos)**2).sum()) 
             norm_dist = cursor_button_dist / np.sqrt((self.resolution**2).sum())
             assert 0. <= norm_dist <= 1.
-            #reward = dist_scale_factor * (0. - norm_dist)
+            reward = dist_scale_factor * (1./self.timelimit) * (0. - norm_dist)
             #reward = 1. - 0.9*(self.timestep / self.timelimit)
             reward = 0.
             terminated = False

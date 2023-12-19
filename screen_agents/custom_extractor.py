@@ -80,7 +80,6 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
                         nn.LeakyReLU(),
                         nn.Linear(8,8),
                         )
-                '''
                 model = nn.Sequential(
                         v2.Resize([32,32]),
                         nn.Conv2d(n_stacked_frames*n_input_channels, 2, kernel_size=2, stride=1, padding=pad),
@@ -93,6 +92,20 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
                         nn.Conv2d(2, 2, kernel_size=2, stride=2),
                         nn.Flatten(),
                         nn.Linear(8,8),
+                        )
+                '''
+                model = nn.Sequential(
+                        v2.Resize([32,32]),
+                        nn.Conv2d(n_stacked_frames*n_input_channels, 4, kernel_size=5, stride=1, padding=pad),
+                        nn.AvgPool2d(2),
+                        nn.Conv2d(4, 4, kernel_size=5, stride=1, padding=pad),
+                        nn.AvgPool2d(2),
+                        nn.Conv2d(4, 4, kernel_size=5, stride=1, padding=pad),
+                        nn.AvgPool2d(2),
+                        nn.Conv2d(4, 4, kernel_size=5, stride=1, padding=pad),
+                        nn.AvgPool2d(2),
+                        nn.Flatten(),
+                        nn.Linear(16,8),
                         )
                 extractors[key] = torch.compile(model)
                 total_concat_size += 8

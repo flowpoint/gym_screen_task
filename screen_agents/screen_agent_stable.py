@@ -150,18 +150,19 @@ def demo(hparams,checkpoint='longtrain1'):
 def main():
     curriculum = {
             "steps":[
-                {"res":[8,8], "num_steps":5_000_000},
-                {"res":[16,16], "num_steps":10_000_000},
-                {"res":[24,24], "num_steps":15_000_000},
-                {"res":[32,32], "num_steps":15_000_000},
+                {"res":[8,8], "num_steps":2_000_000},
+                {"res":[16,16], "num_steps":2_000_000},
+                {"res":[24,24], "num_steps":5_000_000},
+                {"res":[32,32], "num_steps":5_000_000},
                 ]
             }
+
 
     #res = [32,32]
     res = [8,8]
     hparams = {
             'lr': 0.0003,
-            'bs': 2048,#64,#8*2048,
+            'bs': 64,#2048,#64,#8*2048,
             'resolution': res,
             'curriculum':curriculum,
             'noise': max(res)-1,
