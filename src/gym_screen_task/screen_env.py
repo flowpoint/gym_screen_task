@@ -84,6 +84,7 @@ class ScreenEnv(gym.Env):
                  resolution=[128,128], 
                  obs_resolution=[128,128],
                  timelimit=600, 
+                 button_size=None,
                  render_mode=None, 
                  background_pattern='zeros'
                  ):
@@ -91,6 +92,8 @@ class ScreenEnv(gym.Env):
         self.resolution = np.array(resolution, dtype=np.int64)
         self.render_mode = render_mode
         self.renderer = Renderer(self.resolution, fps=self.metadata['render_fps'])
+
+        self.button_size=button_size
 
         # add a background_pattern for better positional recognition
         self.background_pattern = background_pattern
@@ -365,9 +368,12 @@ class FindButtonEnv(ScreenEnv):
 
 
     def mouse_on_button(self, new_obs):
+        '''
         cur = self.cursor_pos.round().clip(np.array([0,0]), self.resolution-1).astype(np.int64)
         assert list(cur.shape) == [2]
         return int(new_obs['screen'][cur[0], cur[1]]) == int(self.semantic_class['button'])
+        '''
+        return all(np.abs(self.button_pos - self.cursor_pos) < self.button_size/2.)
 
     def _get_step_reward(self, action, old_obs, new_obs):
         # use the convention of normalizing reward between [-1, 1] per step
@@ -402,7 +408,7 @@ class FindButtonEnv(ScreenEnv):
             assert 0. <= norm_dist <= 1.
             reward = dist_scale_factor * (1./self.timelimit) * (0. - norm_dist)
             #reward = 1. - 0.9*(self.timestep / self.timelimit)
-            reward = 0.
+            #reward = 0.
             terminated = False
             truncated = False
 

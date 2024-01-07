@@ -32,6 +32,7 @@ def make_env(rank, hparams):
                 resolution=hparams['resolution'], 
                 timelimit=hparams['timelimit'], 
                 noise=hparams['noise'], 
+                button_size=hparams['button_size'],
                 random_cursor_start=True, 
                 envid=rank)
         #env = gym.wrappers.FilterObservation(env, filter_keys=['screen'])
@@ -150,16 +151,15 @@ def demo(hparams,checkpoint='longtrain1'):
 def main():
     curriculum = {
             "steps":[
-                {"res":[8,8], "num_steps":2_000_000},
-                {"res":[16,16], "num_steps":2_000_000},
-                {"res":[24,24], "num_steps":5_000_000},
-                {"res":[32,32], "num_steps":5_000_000},
+                {"res":[32,32], "num_steps":2_000_000, "button_size":4},
+                {"res":[32,32], "num_steps":4_000_000, "button_size":3},
+                {"res":[32,32], "num_steps":4_000_000, "button_size":2},
+                {"res":[32,32], "num_steps":15_000_000, "button_size":1},
                 ]
             }
 
 
-    #res = [32,32]
-    res = [8,8]
+    res = [32,32]
     hparams = {
             'lr': 0.0003,
             'bs': 64,#2048,#64,#8*2048,
@@ -168,6 +168,7 @@ def main():
             'noise': max(res)-1,
             'timelimit': 100,
             'gamma':0.98, #99,
+            'button_size': 4.,
             'clip':0.2,
             'agent': 'ppo'
             }
@@ -194,6 +195,7 @@ def main():
         #train_w_render(learn=True)
         print(f'starting curriculum step: {learn_step}')
         hparams['resolution'] = learn_step['res']
+        hparams['button_size'] = learn_step['button_size']
         env = get_vec_env(n_cpu, aim_run, hparams)
         model.set_env(env)
         model.learn(total_timesteps=learn_step['num_steps'], callback=eval_callback)
