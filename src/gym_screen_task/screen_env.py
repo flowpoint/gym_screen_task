@@ -265,8 +265,12 @@ class ScreenEnv(gym.Env):
         return frame
 
     def _sample_new_button_pos(self):
-        center = ((self.resolution-1)/2).round().astype(np.int64) 
-        random_shift = ((np.random.random([2])-0.5)*self.noise).round().astype(np.int64)
+        #center = ((self.resolution-1)/2).round().astype(np.int64) 
+        #random_shift = ((np.random.random([2])-0.5)*self.noise).round().astype(np.int64)
+        #return center + random_shift
+        res = np.array(self.resolution,dtype=np.int64)
+        random_shift = np.random.randint(-0,res[0]//2,size=2)
+        center = res // 2
         return center + random_shift
 
     def reset(self, seed=None, options=None):
@@ -380,9 +384,9 @@ class FindButtonEnv(ScreenEnv):
         # define reward mixture
 
         # reward factor for finishing correct
-        term_scale_factor = 0.5
+        term_scale_factor = 1. #0.5
         # reward factor for minimizing distance
-        dist_scale_factor = 0.5
+        dist_scale_factor = 0
 
         factor_normalizing_factor = 1 / sum([term_scale_factor, dist_scale_factor])
 
@@ -406,7 +410,8 @@ class FindButtonEnv(ScreenEnv):
             cursor_button_dist = np.sqrt(((self.button_pos - self.cursor_pos)**2).sum()) 
             norm_dist = cursor_button_dist / np.sqrt((self.resolution**2).sum())
             assert 0. <= norm_dist <= 1.
-            reward = dist_scale_factor * (1./self.timelimit) * (0. - norm_dist)
+            reward = 0.
+            #reward = dist_scale_factor * (1./self.timelimit) * (0. - norm_dist)
             #reward = 1. - 0.9*(self.timestep / self.timelimit)
             #reward = 0.
             terminated = False

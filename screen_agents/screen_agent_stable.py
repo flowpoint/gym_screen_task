@@ -89,6 +89,9 @@ def get_model(env, hparams):
                     verbose=1, learning_rate=hparams['lr'], 
                     batch_size=hparams['bs'], gamma=hparams['gamma'],
                     policy_kwargs=policy_kwargs,
+                    use_sde=False,
+                    n_steps=8192,
+                    gae_lambda=0.99,
                     clip_range=hparams['clip'],)
                     #device='cpu')
     elif agent == 'a2c':
@@ -151,10 +154,10 @@ def demo(hparams,checkpoint='longtrain1'):
 def main():
     curriculum = {
             "steps":[
-                {"res":[32,32], "num_steps":2_000_000, "button_size":4},
-                {"res":[32,32], "num_steps":4_000_000, "button_size":3},
-                {"res":[32,32], "num_steps":4_000_000, "button_size":2},
-                {"res":[32,32], "num_steps":15_000_000, "button_size":1},
+                {"res":[32,32], "num_steps":50_000_000, "button_size":1},
+                #{"res":[32,32], "num_steps":1_000_000, "button_size":3},
+                #{"res":[32,32], "num_steps":1_000_000, "button_size":2},
+                #{"res":[32,32], "num_steps":1_000_000, "button_size":1},
                 ]
             }
 
@@ -162,12 +165,15 @@ def main():
     res = [32,32]
     hparams = {
             'lr': 0.0003,
-            'bs': 64,#2048,#64,#8*2048,
+            #'bs': 64,#2048,#64,#8*2048,
+            #'bs': 2048,#64,#8*2048,
+            #'bs':8192,
+            'bs':256,
             'resolution': res,
             'curriculum':curriculum,
             'noise': max(res)-1,
             'timelimit': 100,
-            'gamma':0.98, #99,
+            'gamma':0.99, #99,
             'button_size': 4.,
             'clip':0.2,
             'agent': 'ppo'
@@ -184,6 +190,7 @@ def main():
     eval_callback = EvalCallback(
             env, 
             eval_freq=10000,
+            n_eval_episodes=500,
             deterministic=True, 
             render=True)
 
